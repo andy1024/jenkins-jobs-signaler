@@ -3,28 +3,56 @@
 // Copyright: GPL V2
 // See http://www.gnu.org/licenses/gpl.html
 // by https://github.com/andy1024
-// based on EtherCard examples
+// based on EtherCard and NeoPixel examples
 
 #include <EtherCard.h>
 
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
 static byte mymac[] = { 0xDE,0xAD,0xBE,0xEF,0xFE,0xED };
 
-byte Ethernet::buffer[200];
+#define MAX_BUF 200
+
+byte Ethernet::buffer[MAX_BUF];
 static uint32_t timer;
+
+#define DELAY_TIME 50
+
+#define REQUEST_TIMEOUT 30000
+
+//NeoPixel definitions
+#define PIN            9
+
+//How many NeoPixels are attached to the Arduino?
+#define NUMPIXELS      1
 
 const char website[] PROGMEM = "192.168.1.21";
 
-// request callbacke
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_RGB + NEO_KHZ800);
+
+// request callback
 static void my_callback (byte status, word off, word len) {
   Serial.println(">>> in callback method");
-  Ethernet::buffer[off+200] = 0; //cut-off
+  Ethernet::buffer[off+MAX_BUF] = 0; //cut-off
   Serial.print((const char*) Ethernet::buffer + off);
   Serial.println(">>> after callback method");
 }
 
-void setup () {
+void setColor(uint8_t r, uint8_t g, uint8_t b) {
+  pixels.setPixelColor(0, pixels.Color(r, g, b));
+  pixels.show();
+  delay(DELAY_TIME);
+}
+
+void setup() {
   Serial.begin(9600);
   Serial.println(F("\n[Jenkins REST Client]"));
+  pixels.begin(); // This initializes the NeoPixel library.
+
+  setColor(0,0,0);
 
   Serial.print("MAC assigned: ");
   for (byte i = 0; i < 6; ++i) {
@@ -57,7 +85,7 @@ void loop () {
   ether.packetLoop(ether.packetReceive());
   
   if (millis() > timer) {
-    timer = millis() + 30000;
+    timer = millis() + REQUEST_TIMEOUT;
     Serial.println();
     Serial.print("<<< REQ ");
     Serial.println(F("Before browseUrl"));
